@@ -88,7 +88,7 @@
     const { useState, useEffect, useRef, useMemo } = React;
 
     // URL Web App Google Apps Script (tempel URL hasil deploy Code.gs di sini saat deploy ke GitHub)
-    const DEFAULT_GAS_WEBAPP_URL = "";
+    const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzbe3dPk2Xiv0tIPgWUtO8CJBFt1zDIiutV92iza3zJ9MOyPU5DZkmR9gdFOmx1VwvFIQ/exec";
 
     // Inline SVG Icons (Bebas dependensi CDN eksternal agar selalu tampil di GitHub Pages)
     const IconBase = ({ children, className = "w-4 h-4" }) => (
@@ -394,7 +394,7 @@
         return saved ? JSON.parse(saved) : INITIAL_TEACHER;
       });
       const [gasUrl] = useState(
-        () => localStorage.getItem("https://script.google.com/macros/s/AKfycbxbg0YQVlUA4Vb2YofhyWYqX_UZWN87VfGFDrhyG4USabB_71rTp3tpsj9e62udWbl7UQ/exec") || DEFAULT_GAS_WEBAPP_URL
+        () => localStorage.getItem("") || DEFAULT_GAS_WEBAPP_URL
       );
       const [syncing, setSyncing] = useState(false);
 
