@@ -23,12 +23,8 @@
       height: 54mm;
     }
     @media print {
-      body * {
-        visibility: hidden;
-      }
-      #print-area, #print-area * {
-        visibility: visible;
-      }
+      body * { visibility: hidden; }
+      #print-area, #print-area * { visibility: visible; }
       #print-area {
         position: absolute;
         left: 0;
@@ -37,9 +33,7 @@
         background: #ffffff !important;
         color: #0f172a !important;
       }
-      .no-print {
-        display: none !important;
-      }
+      .no-print { display: none !important; }
     }
   </style>
 </head>
@@ -52,12 +46,11 @@
     // =========================================================================
     // TEMPELKAN URL WEB APP GOOGLE APPS SCRIPT (/exec) ANDA DI SINI SEBELUM DEPLOY
     // =========================================================================
-    const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzMsJ3HrHSUS153gSP12CeoQgTy6adZrumgy4dXkTp5kHv15u6Vm4yxS0DnEqV4yx-gfw/exec";
+    const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyluAMjncNYHHkvSejdzbvus-wApbhhtFteuCxV_QTkEtqKrZSXTx9FhdAYDDv5VvJSmw/exec";
 
     const STORAGE_KEYS = {
       APP_STATE: "ABSENSIKU_STATE_V2",
-      SYNC_QUEUE: "ABSENSIKU_SYNC_QUEUE_V2",
-      AUTH: "ABSENSIKU_AUTH_V2"
+      SYNC_QUEUE: "ABSENSIKU_SYNC_QUEUE_V2"
     };
 
     const INITIAL_STATE = {
@@ -94,8 +87,14 @@
       });
     }
 
+    function normalizeRowDate(d) {
+      if (!d) return "";
+      const m = String(d).trim().match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : String(d).trim();
+    }
+
     function makeDedupKey(dateStr, meetingId, studentId, nis) {
-      const d = String(dateStr || todayISO()).slice(0, 10).trim();
+      const d = normalizeRowDate(dateStr || todayISO());
       const m = String(meetingId || "GENERAL").trim().toLowerCase();
       const s = String(studentId || nis || "").trim().toLowerCase();
       return `${d}__${m}__${s}`;
@@ -130,9 +129,7 @@
           osc.start();
           osc.stop(ctx.currentTime + 0.25);
         }
-      } catch (e) {
-        // Abaikan jika audio diblokir browser
-      }
+      } catch (e) {}
     }
 
     function computeFinalScore(daily, uts, uas, wDaily = 40, wUts = 30, wUas = 30) {
@@ -151,19 +148,14 @@
         window.QRCode.toCanvas(canvasRef.current, String(value), {
           width: size,
           margin: 1,
-          color: {
-            dark: "#0f172a",
-            light: "#ffffff"
-          }
-        }, (err) => {
-          if (err) console.error("QR Error:", err);
-        });
+          color: { dark: "#0f172a", light: "#ffffff" }
+        }, () => {});
       }, [value, size]);
 
       return <canvas ref={canvasRef} className="rounded bg-white p-1" />;
     }
 
-    function AttendanceBarChart({ classes, students, attendance, selectedDate }) {
+    function AttendanceBarChart({ classes, attendance, selectedDate }) {
       const chartRef = useRef(null);
       const instanceRef = useRef(null);
 
@@ -180,7 +172,7 @@
           ).length;
         });
 
-        const izinSakitAlphaCounts = labels.map((label) => {
+        const otherCounts = labels.map((label) => {
           if (classes.length === 0) return 0;
           const cls = classes.find((c) => c.name === label);
           return attendance.filter(
@@ -191,14 +183,12 @@
           ).length;
         });
 
-        return { labels, hadirCounts, izinSakitAlphaCounts };
-      }, [classes, students, attendance, selectedDate]);
+        return { labels, hadirCounts, otherCounts };
+      }, [classes, attendance, selectedDate]);
 
       useEffect(() => {
         if (!chartRef.current || !window.Chart) return;
-        if (instanceRef.current) {
-          instanceRef.current.destroy();
-        }
+        if (instanceRef.current) instanceRef.current.destroy();
         instanceRef.current = new window.Chart(chartRef.current, {
           type: "bar",
           data: {
@@ -212,7 +202,7 @@
               },
               {
                 label: "Izin / Sakit / Alpha",
-                data: chartData.izinSakitAlphaCounts,
+                data: chartData.otherCounts,
                 backgroundColor: "rgba(245, 158, 11, 0.8)",
                 borderRadius: 6
               }
@@ -221,29 +211,15 @@
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: { color: "#cbd5e1" }
-              }
-            },
+            plugins: { legend: { labels: { color: "#cbd5e1" } } },
             scales: {
-              x: {
-                ticks: { color: "#94a3b8" },
-                grid: { color: "rgba(148, 163, 184, 0.1)" }
-              },
-              y: {
-                beginAtZero: true,
-                ticks: { stepSize: 1, color: "#94a3b8" },
-                grid: { color: "rgba(148, 163, 184, 0.1)" }
-              }
+              x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
+              y: { beginAtZero: true, ticks: { stepSize: 1, color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
             }
           }
         });
-
         return () => {
-          if (instanceRef.current) {
-            instanceRef.current.destroy();
-          }
+          if (instanceRef.current) instanceRef.current.destroy();
         };
       }, [chartData]);
 
@@ -254,20 +230,7 @@
       );
     }
 
-    function normalizeRowDate(d) {
-      if (!d) return "";
-      const s = String(d).trim();
-      const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-      return m ? m[1] : s;
-    }
-
     function App() {
-      const [isLoggedIn, setIsLoggedIn] = useState(() => {
-        return localStorage.getItem(STORAGE_KEYS.AUTH) === "true";
-      });
-      const [loginPasscode, setLoginPasscode] = useState("");
-      const [loginError, setLoginError] = useState("");
-
       const [activeTab, setActiveTab] = useState("dashboard");
       const [appState, setAppState] = useState(() => {
         try {
@@ -280,9 +243,7 @@
               settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) }
             };
           }
-        } catch (e) {
-          console.error(e);
-        }
+        } catch (e) {}
         return INITIAL_STATE;
       });
 
@@ -296,13 +257,13 @@
       });
 
       const [syncStatus, setSyncStatus] = useState({
-        state: "idle", // idle | syncing | synced | error | offline
+        state: DEFAULT_GAS_WEBAPP_URL ? "idle" : "offline",
         message: DEFAULT_GAS_WEBAPP_URL ? "Siap sinkronisasi" : "URL Web App belum diisi"
       });
 
       const [toast, setToast] = useState(null);
 
-      // State Scanner QR & Manual
+      // Scanner QR & Manual
       const [scanDate, setScanDate] = useState(todayISO());
       const [selectedMeetingId, setSelectedMeetingId] = useState("");
       const [cameraActive, setCameraActive] = useState(false);
@@ -311,19 +272,16 @@
       const [manualStatus, setManualStatus] = useState("Hadir");
       const [lastScanAlert, setLastScanAlert] = useState(null);
 
-      // Cooldown anti-baca cepat beruntun per kartu
       const recentScanMapRef = useRef({});
       const scannerHtml5Ref = useRef(null);
       const processingScanRef = useRef(false);
       const isFlushingRef = useRef(false);
 
-      // Form Data Kelas & Siswa
+      // Form Kelas, Siswa, Pertemuan, Materi, Nilai, Pengaturan
       const [classForm, setClassForm] = useState({ id: "", name: "", gradeLevel: "8", homeroomTeacher: "" });
       const [studentForm, setStudentForm] = useState({ id: "", nis: "", name: "", gender: "L", classId: "" });
       const [selectedClassFilter, setSelectedClassFilter] = useState("ALL");
       const [printClassId, setPrintClassId] = useState("ALL");
-
-      // Form Pertemuan & Materi
       const [meetingForm, setMeetingForm] = useState({ id: "", title: "", classId: "", date: todayISO(), topic: "" });
       const [materialForm, setMaterialForm] = useState({
         id: "",
@@ -334,12 +292,8 @@
         summary: "",
         linkUrl: ""
       });
-
-      // Form Nilai
       const [gradeClassId, setGradeClassId] = useState("ALL");
       const [gradeDrafts, setGradeDrafts] = useState({});
-
-      // Form Pengaturan
       const [settingsForm, setSettingsForm] = useState(appState.settings);
 
       const showToast = useCallback((text, type = "info") => {
@@ -348,24 +302,20 @@
 
       useEffect(() => {
         if (!toast) return;
-        const t = setTimeout(() => setToast(null), 3200);
+        const t = setTimeout(() => setToast(null), 3000);
         return () => clearTimeout(t);
       }, [toast]);
 
       useEffect(() => {
         try {
           localStorage.setItem(STORAGE_KEYS.APP_STATE, JSON.stringify(appState));
-        } catch (e) {
-          console.error("Gagal menyimpan ke localStorage:", e);
-        }
+        } catch (e) {}
       }, [appState]);
 
       useEffect(() => {
         try {
           localStorage.setItem(STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(syncQueue));
-        } catch (e) {
-          console.error("Gagal menyimpan antrean:", e);
-        }
+        } catch (e) {}
       }, [syncQueue]);
 
       useEffect(() => {
@@ -378,28 +328,20 @@
         }
       }, [appState.meetings, selectedMeetingId]);
 
-      // Fungsi kirim ke Google Apps Script
       const sendToGas = useCallback(async (action, data = {}) => {
         const url = String(DEFAULT_GAS_WEBAPP_URL || "").trim();
-        if (!url) {
-          throw new Error("DEFAULT_GAS_WEBAPP_URL belum diisi");
-        }
-        const response = await fetch(url, {
+        if (!url) throw new Error("DEFAULT_GAS_WEBAPP_URL kosong");
+        const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({ action, data })
         });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const json = await response.json();
-        if (!json.ok) {
-          throw new Error(json.error || "Respons GAS tidak valid");
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || "Respons GAS gagal");
         return json;
       }, []);
 
-      // Enqueue aksi ke antrean latar belakang agar UI instan
       const enqueueSync = useCallback((action, data) => {
         const url = String(DEFAULT_GAS_WEBAPP_URL || "").trim();
         if (!url) {
@@ -415,32 +357,31 @@
         setSyncQueue((prev) => [...prev, job]);
       }, []);
 
-      // Proses antrean secara beruntun tanpa memblokir interaksi UI
       const flushQueue = useCallback(async () => {
         const url = String(DEFAULT_GAS_WEBAPP_URL || "").trim();
         if (!url || isFlushingRef.current || syncQueue.length === 0) return;
 
         isFlushingRef.current = true;
-        setSyncStatus({ state: "syncing", message: `Menyinkronkan (${syncQueue.length})...` });
+        setSyncStatus({ state: "syncing", message: `Sinkron (${syncQueue.length})...` });
 
         try {
-          const currentQueue = [...syncQueue];
-          const remaining = [];
+          const snapshot = [...syncQueue];
+          const pending = [];
 
-          for (let i = 0; i < currentQueue.length; i++) {
-            const job = currentQueue[i];
+          for (let i = 0; i < snapshot.length; i++) {
+            const job = snapshot[i];
             try {
               await sendToGas(job.action, job.data);
             } catch (err) {
-              remaining.push(job, ...currentQueue.slice(i + 1));
+              pending.push(job, ...snapshot.slice(i + 1));
               throw err;
             }
           }
 
-          setSyncQueue(remaining);
+          setSyncQueue(pending);
           setSyncStatus({ state: "synced", message: `Tersinkron (${nowTimeStr()})` });
         } catch (err) {
-          setSyncStatus({ state: "error", message: "Antrean tertunda (cek koneksi/URL)" });
+          setSyncStatus({ state: "error", message: "Antrean tertunda" });
         } finally {
           isFlushingRef.current = false;
         }
@@ -448,32 +389,26 @@
 
       useEffect(() => {
         if (syncQueue.length > 0 && DEFAULT_GAS_WEBAPP_URL) {
-          const timer = setTimeout(() => {
-            flushQueue();
-          }, 120);
-          return () => clearTimeout(timer);
+          const t = setTimeout(() => flushQueue(), 100);
+          return () => clearTimeout(t);
         } else if (syncQueue.length === 0 && DEFAULT_GAS_WEBAPP_URL) {
           setSyncStatus((prev) =>
-            prev.state === "syncing"
-              ? { state: "synced", message: `Tersinkron (${nowTimeStr()})` }
-              : prev
+            prev.state === "syncing" ? { state: "synced", message: `Tersinkron (${nowTimeStr()})` } : prev
           );
         }
       }, [syncQueue, flushQueue]);
 
-      // Tarik data awal dari Google Sheets saat login jika URL tersedia
       const pullFromSpreadsheet = useCallback(async (showFeedback = false) => {
         const url = String(DEFAULT_GAS_WEBAPP_URL || "").trim();
         if (!url) {
           if (showFeedback) showToast("Isi DEFAULT_GAS_WEBAPP_URL di index.html terlebih dahulu.", "error");
           return;
         }
-        setSyncStatus({ state: "syncing", message: "Mengambil data Sheets..." });
+        setSyncStatus({ state: "syncing", message: "Memuat Sheets..." });
         try {
           const res = await fetch(`${url}?action=getAllData&_t=${Date.now()}`);
           const json = await res.json();
           if (!json.ok || !json.data) throw new Error(json.error || "Gagal memuat data");
-
           const d = json.data;
           setAppState((prev) => ({
             settings: { ...INITIAL_STATE.settings, ...(d.settings || prev.settings) },
@@ -487,45 +422,42 @@
           setSyncStatus({ state: "synced", message: `Terhubung (${nowTimeStr()})` });
           if (showFeedback) showToast("Data berhasil dimuat dari Google Sheets.", "success");
         } catch (err) {
-          setSyncStatus({ state: "error", message: "Gagal tarik data Sheets" });
+          setSyncStatus({ state: "error", message: "Gagal memuat Sheets" });
           if (showFeedback) showToast(`Gagal memuat dari Sheets: ${err.message}`, "error");
         }
       }, [showToast]);
 
       useEffect(() => {
-        if (isLoggedIn && DEFAULT_GAS_WEBAPP_URL) {
+        if (DEFAULT_GAS_WEBAPP_URL) {
           pullFromSpreadsheet(false);
         }
-      }, [isLoggedIn, pullFromSpreadsheet]);
+      }, [pullFromSpreadsheet]);
 
-      // Set anti-duplikasi cepat di memori untuk hari & pertemuan yang sedang dipilih
       const existingAttendanceKeys = useMemo(() => {
-        const keys = new Set();
+        const set = new Set();
         appState.attendance.forEach((row) => {
-          keys.add(makeDedupKey(row.date, row.meetingId, row.studentId, row.nis));
+          set.add(makeDedupKey(row.date, row.meetingId, row.studentId, row.nis));
         });
-        return keys;
+        return set;
       }, [appState.attendance]);
 
-      // Fungsi inti pencatatan absensi dengan pengecekan ketat anti-ganda
       const registerAttendance = useCallback((rawPayload) => {
         const targetDate = normalizeRowDate(rawPayload.date || scanDate || todayISO());
         const meetingObj = appState.meetings.find((m) => m.id === (rawPayload.meetingId || selectedMeetingId));
         const meetingId = meetingObj ? meetingObj.id : (rawPayload.meetingId || "GENERAL");
         const meetingTitle = meetingObj ? meetingObj.title : (rawPayload.meetingTitle || "Pertemuan Reguler");
 
-        // Cari siswa berdasarkan ID atau NIS
         let student = appState.students.find((s) => String(s.id) === String(rawPayload.studentId || "").trim());
         if (!student && (rawPayload.nis || rawPayload.code)) {
-          const lookupCode = String(rawPayload.nis || rawPayload.code).trim().toLowerCase();
+          const lookup = String(rawPayload.nis || rawPayload.code).trim().toLowerCase();
           student = appState.students.find(
-            (s) => String(s.nis).trim().toLowerCase() === lookupCode || String(s.id).trim().toLowerCase() === lookupCode
+            (s) => String(s.nis).trim().toLowerCase() === lookup || String(s.id).trim().toLowerCase() === lookup
           );
         }
 
         if (!student) {
           playScanTone("error");
-          const msg = `Kode / NIS "${rawPayload.code || rawPayload.nis || rawPayload.studentId}" tidak ditemukan di Data Siswa.`;
+          const msg = `Kode / NIS "${rawPayload.code || rawPayload.nis || rawPayload.studentId}" tidak ditemukan.`;
           setLastScanAlert({ type: "error", title: "Siswa Tidak Ditemukan", detail: msg });
           showToast(msg, "error");
           return { ok: false, reason: "NOT_FOUND" };
@@ -533,15 +465,14 @@
 
         const dedupKey = makeDedupKey(targetDate, meetingId, student.id, student.nis);
         const nowTs = Date.now();
-        const lastLocalScan = recentScanMapRef.current[dedupKey] || 0;
+        const lastScanTs = recentScanMapRef.current[dedupKey] || 0;
 
-        // Blokir scan berulang cepat (cooldown 5 detik) maupun sudah tercatat di hari & pertemuan yang sama
-        if ((nowTs - lastLocalScan) < 5000 || existingAttendanceKeys.has(dedupKey)) {
+        if ((nowTs - lastScanTs) < 5000 || existingAttendanceKeys.has(dedupKey)) {
           playScanTone("duplicate");
-          const msg = `${student.name} (${student.nis || "-"}) sudah tercatat hadir pada ${targetDate} (${meetingTitle}).`;
+          const msg = `${student.name} sudah tercatat pada ${targetDate} (${meetingTitle}).`;
           setLastScanAlert({
             type: "duplicate",
-            title: "Sudah Tercatat Hari Ini",
+            title: "Scan Ganda Ditolak",
             detail: msg
           });
           showToast(`${student.name} sudah absen di pertemuan/hari ini!`, "warning");
@@ -568,7 +499,7 @@
           scannedAt: `${targetDate} ${nowTimeStr()}`
         };
 
-        // Optimistic update: langsung tampil di layar seketika
+        // Optimistic update langsung agar tampilan instan
         setAppState((prev) => ({
           ...prev,
           attendance: [record, ...prev.attendance]
@@ -585,7 +516,6 @@
         return { ok: true, record };
       }, [scanDate, selectedMeetingId, appState.meetings, appState.students, appState.classes, existingAttendanceKeys, enqueueSync, showToast]);
 
-      // Kamera Scanner QR (html5-qrcode)
       useEffect(() => {
         if (!cameraActive || activeTab !== "scanner") {
           if (scannerHtml5Ref.current) {
@@ -598,21 +528,20 @@
 
         const readerId = "absensiku-qr-reader";
         if (!window.Html5Qrcode) {
-          showToast("Library pemindai kamera belum termuat.", "error");
+          showToast("Pemindai kamera tidak tersedia.", "error");
           setCameraActive(false);
           return;
         }
 
-        const html5QrCode = new window.Html5Qrcode(readerId);
-        scannerHtml5Ref.current = html5QrCode;
+        const scanner = new window.Html5Qrcode(readerId);
+        scannerHtml5Ref.current = scanner;
 
-        html5QrCode.start(
+        scanner.start(
           { facingMode: "environment" },
           { fps: 12, qrbox: { width: 230, height: 230 } },
           (decodedText) => {
             if (processingScanRef.current) return;
             processingScanRef.current = true;
-
             try {
               let parsed = {};
               try {
@@ -629,41 +558,20 @@
             } finally {
               setTimeout(() => {
                 processingScanRef.current = false;
-              }, 800);
+              }, 700);
             }
           },
           () => {}
-        ).catch((err) => {
-          console.error(err);
-          showToast("Kamera tidak dapat diakses. Gunakan input NIS/Manual.", "error");
+        ).catch(() => {
+          showToast("Kamera gagal dibuka. Gunakan input NIS/Manual.", "error");
           setCameraActive(false);
         });
 
         return () => {
-          html5QrCode.stop().catch(() => {});
+          scanner.stop().catch(() => {});
         };
       }, [cameraActive, activeTab, registerAttendance, showToast]);
 
-      // Login Handler
-      const handleLogin = (e) => {
-        e.preventDefault();
-        if (!loginPasscode.trim()) {
-          setLoginError("Masukkan kode akses guru terlebih dahulu.");
-          return;
-        }
-        localStorage.setItem(STORAGE_KEYS.AUTH, "true");
-        setIsLoggedIn(true);
-        setLoginError("");
-        showToast(`Selamat datang, ${appState.settings.teacherName}!`, "success");
-      };
-
-      const handleLogout = () => {
-        setCameraActive(false);
-        localStorage.removeItem(STORAGE_KEYS.AUTH);
-        setIsLoggedIn(false);
-      };
-
-      // CRUD Kelas
       const handleSaveClass = (e) => {
         e.preventDefault();
         if (!classForm.name.trim()) return;
@@ -675,35 +583,27 @@
           homeroomTeacher: classForm.homeroomTeacher.trim(),
           createdAt: todayISO()
         };
-
         setAppState((prev) => {
           const exists = prev.classes.some((c) => c.id === id);
           const updatedClasses = exists
             ? prev.classes.map((c) => (c.id === id ? item : c))
             : [...prev.classes, item];
-
           const updatedStudents = prev.students.map((s) =>
             s.classId === id ? { ...s, className: item.name } : s
           );
-
           return { ...prev, classes: updatedClasses, students: updatedStudents };
         });
-
         enqueueSync("upsertClass", item);
         setClassForm({ id: "", name: "", gradeLevel: "8", homeroomTeacher: "" });
-        showToast("Data kelas disimpan.", "success");
+        showToast("Kelas disimpan.", "success");
       };
 
       const handleDeleteClass = (id) => {
-        setAppState((prev) => ({
-          ...prev,
-          classes: prev.classes.filter((c) => c.id !== id)
-        }));
+        setAppState((prev) => ({ ...prev, classes: prev.classes.filter((c) => c.id !== id) }));
         enqueueSync("deleteClass", { id });
         showToast("Kelas dihapus.", "info");
       };
 
-      // CRUD Siswa
       const handleSaveStudent = (e) => {
         e.preventDefault();
         if (!studentForm.name.trim()) return;
@@ -718,46 +618,33 @@
           className: cls ? cls.name : "",
           createdAt: todayISO()
         };
-
         setAppState((prev) => {
           const exists = prev.students.some((s) => s.id === id);
-          const updated = exists
-            ? prev.students.map((s) => (s.id === id ? item : s))
-            : [...prev.students, item];
+          const updated = exists ? prev.students.map((s) => (s.id === id ? item : s)) : [...prev.students, item];
           return { ...prev, students: updated };
         });
-
         enqueueSync("upsertStudent", item);
         setStudentForm({ id: "", nis: "", name: "", gender: "L", classId: studentForm.classId });
         showToast("Data siswa disimpan.", "success");
       };
 
       const handleDeleteStudent = (id) => {
-        setAppState((prev) => ({
-          ...prev,
-          students: prev.students.filter((s) => s.id !== id)
-        }));
+        setAppState((prev) => ({ ...prev, students: prev.students.filter((s) => s.id !== id) }));
         enqueueSync("deleteStudent", { id });
         showToast("Siswa dihapus.", "info");
       };
 
-      // Import Excel / CSV Siswa
       const handleImportExcelStudents = (e) => {
         const file = e.target.files?.[0];
         if (!file || !window.XLSX) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
-            const workbook = window.XLSX.read(evt.target.result, { type: "binary" });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = window.XLSX.utils.sheet_to_json(firstSheet);
-            if (!rows.length) {
-              showToast("File kosong atau tidak ada baris data.", "error");
-              return;
-            }
-
+            const wb = window.XLSX.read(evt.target.result, { type: "binary" });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = window.XLSX.utils.sheet_to_json(ws);
             const existingNis = new Set(appState.students.map((s) => String(s.nis || "").trim()));
-            const newStudents = [];
+            const addedList = [];
 
             rows.forEach((r, idx) => {
               const name = String(r.Nama || r.nama || r.Name || r.name || "").trim();
@@ -768,12 +655,9 @@
               const matchedClass = appState.classes.find(
                 (c) => c.name.toLowerCase() === classLabel.toLowerCase() || c.id === classLabel
               );
-
-              if (!name) return;
-              if (nis && existingNis.has(nis)) return;
+              if (!name || (nis && existingNis.has(nis))) return;
               if (nis) existingNis.add(nis);
-
-              newStudents.push({
+              addedList.push({
                 id: `STD-${Date.now()}-${idx}`,
                 nis,
                 name,
@@ -784,17 +668,13 @@
               });
             });
 
-            if (newStudents.length === 0) {
-              showToast("Tidak ada siswa baru yang ditambahkan (mungkin duplikat NIS).", "warning");
+            if (addedList.length === 0) {
+              showToast("Tidak ada siswa baru untuk diimpor.", "warning");
               return;
             }
-
-            setAppState((prev) => ({
-              ...prev,
-              students: [...prev.students, ...newStudents]
-            }));
-            enqueueSync("bulkImportStudents", { students: newStudents });
-            showToast(`${newStudents.length} siswa berhasil diimpor.`, "success");
+            setAppState((prev) => ({ ...prev, students: [...prev.students, ...addedList] }));
+            enqueueSync("bulkImportStudents", { students: addedList });
+            showToast(`${addedList.length} siswa diimpor.`, "success");
           } catch (err) {
             showToast("Gagal membaca file Excel/CSV.", "error");
           } finally {
@@ -804,7 +684,6 @@
         reader.readAsBinaryString(file);
       };
 
-      // CRUD Pertemuan
       const handleSaveMeeting = (e) => {
         e.preventDefault();
         if (!meetingForm.title.trim()) return;
@@ -819,12 +698,9 @@
           topic: meetingForm.topic.trim(),
           createdAt: todayISO()
         };
-
         setAppState((prev) => {
           const exists = prev.meetings.some((m) => m.id === id);
-          const updated = exists
-            ? prev.meetings.map((m) => (m.id === id ? item : m))
-            : [...prev.meetings, item];
+          const updated = exists ? prev.meetings.map((m) => (m.id === id ? item : m)) : [...prev.meetings, item];
           return { ...prev, meetings: updated };
         });
         setSelectedMeetingId(id);
@@ -834,15 +710,11 @@
       };
 
       const handleDeleteMeeting = (id) => {
-        setAppState((prev) => ({
-          ...prev,
-          meetings: prev.meetings.filter((m) => m.id !== id)
-        }));
+        setAppState((prev) => ({ ...prev, meetings: prev.meetings.filter((m) => m.id !== id) }));
         enqueueSync("deleteMeeting", { id });
         showToast("Pertemuan dihapus.", "info");
       };
 
-      // CRUD Materi
       const handleSaveMaterial = (e) => {
         e.preventDefault();
         if (!materialForm.title.trim()) return;
@@ -857,12 +729,9 @@
           linkUrl: materialForm.linkUrl.trim(),
           createdAt: todayISO()
         };
-
         setAppState((prev) => {
           const exists = prev.materials.some((m) => m.id === id);
-          const updated = exists
-            ? prev.materials.map((m) => (m.id === id ? item : m))
-            : [...prev.materials, item];
+          const updated = exists ? prev.materials.map((m) => (m.id === id ? item : m)) : [...prev.materials, item];
           return { ...prev, materials: updated };
         });
         enqueueSync("upsertMaterial", item);
@@ -875,19 +744,15 @@
           summary: "",
           linkUrl: ""
         });
-        showToast("Materi pelajaran disimpan.", "success");
+        showToast("Materi disimpan.", "success");
       };
 
       const handleDeleteMaterial = (id) => {
-        setAppState((prev) => ({
-          ...prev,
-          materials: prev.materials.filter((m) => m.id !== id)
-        }));
+        setAppState((prev) => ({ ...prev, materials: prev.materials.filter((m) => m.id !== id) }));
         enqueueSync("deleteMaterial", { id });
         showToast("Materi dihapus.", "info");
       };
 
-      // Nilai
       const visibleGradeStudents = useMemo(() => {
         if (gradeClassId === "ALL") return appState.students;
         return appState.students.filter((s) => s.classId === gradeClassId);
@@ -911,25 +776,14 @@
         const base = getStudentGradeDraft(student);
         setGradeDrafts((prev) => ({
           ...prev,
-          [studentId]: {
-            ...base,
-            [field]: Number(value)
-          }
+          [studentId]: { ...base, [field]: Number(value) }
         }));
       };
 
       const handleSaveAllGrades = () => {
         const { weightDaily, weightUts, weightUas, semester } = appState.settings;
         const payloads = visibleGradeStudents.map((student) => {
-          const draft = getStudentGradeDraft(student);
-          const finalScore = computeFinalScore(
-            draft.dailyScore,
-            draft.utsScore,
-            draft.uasScore,
-            weightDaily,
-            weightUts,
-            weightUas
-          );
+          const d = getStudentGradeDraft(student);
           const cls = appState.classes.find((c) => c.id === student.classId);
           return {
             id: `GRD-${student.id}-${semester}`,
@@ -939,10 +793,10 @@
             classId: student.classId || "",
             className: cls ? cls.name : (student.className || ""),
             semester,
-            dailyScore: Number(draft.dailyScore) || 0,
-            utsScore: Number(draft.utsScore) || 0,
-            uasScore: Number(draft.uasScore) || 0,
-            finalScore,
+            dailyScore: Number(d.dailyScore) || 0,
+            utsScore: Number(d.utsScore) || 0,
+            uasScore: Number(d.uasScore) || 0,
+            finalScore: computeFinalScore(d.dailyScore, d.utsScore, d.uasScore, weightDaily, weightUts, weightUas),
             weightDaily,
             weightUts,
             weightUas,
@@ -951,22 +805,18 @@
         });
 
         setAppState((prev) => {
-          const nextGrades = [...prev.grades];
+          const next = [...prev.grades];
           payloads.forEach((p) => {
-            const idx = nextGrades.findIndex(
-              (g) => g.studentId === p.studentId && g.semester === p.semester
-            );
-            if (idx >= 0) nextGrades[idx] = p;
-            else nextGrades.push(p);
+            const idx = next.findIndex((g) => g.studentId === p.studentId && g.semester === p.semester);
+            if (idx >= 0) next[idx] = p;
+            else next.push(p);
           });
-          return { ...prev, grades: nextGrades };
+          return { ...prev, grades: next };
         });
-
         enqueueSync("bulkUpsertGrades", { grades: payloads });
-        showToast(`${payloads.length} data nilai disimpan.`, "success");
+        showToast(`${payloads.length} nilai disimpan.`, "success");
       };
 
-      // Pengaturan Guru
       const handleSaveSettings = (e) => {
         e.preventDefault();
         const updated = {
@@ -978,26 +828,20 @@
         };
         setAppState((prev) => ({ ...prev, settings: updated }));
         enqueueSync("saveSettings", updated);
-        showToast("Pengaturan sekolah & bobot nilai disimpan.", "success");
+        showToast("Pengaturan disimpan.", "success");
       };
 
       const handleClearAllData = () => {
-        const confirmed = window.confirm("Hapus seluruh data kelas, siswa, pertemuan, materi, absensi, dan nilai?");
-        if (!confirmed) return;
-        setAppState((prev) => ({
-          ...INITIAL_STATE,
-          settings: prev.settings
-        }));
+        if (!window.confirm("Kosongkan seluruh data aplikasi?")) return;
+        setAppState((prev) => ({ ...INITIAL_STATE, settings: prev.settings }));
         setGradeDrafts({});
         enqueueSync("clearAllData", {});
-        showToast("Seluruh data aplikasi telah dikosongkan.", "info");
+        showToast("Semua data telah dikosongkan.", "info");
       };
 
-      // Ekspor Excel Rekap Absensi & Nilai
       const handleExportExcel = () => {
         if (!window.XLSX) return;
         const wb = window.XLSX.utils.book_new();
-
         const attRows = appState.attendance.map((r, i) => ({
           No: i + 1,
           Tanggal: normalizeRowDate(r.date),
@@ -1009,8 +853,11 @@
           Metode: r.method,
           Waktu: r.scannedAt
         }));
-        const wsAtt = window.XLSX.utils.json_to_sheet(attRows.length ? attRows : [{ Keterangan: "Belum ada data absensi" }]);
-        window.XLSX.utils.book_append_sheet(wb, wsAtt, "Riwayat_Absensi");
+        window.XLSX.utils.book_append_sheet(
+          wb,
+          window.XLSX.utils.json_to_sheet(attRows.length ? attRows : [{ Keterangan: "Belum ada data" }]),
+          "Riwayat_Absensi"
+        );
 
         const grdRows = appState.grades.map((g, i) => ({
           No: i + 1,
@@ -1023,14 +870,16 @@
           UAS: g.uasScore,
           Nilai_Akhir: g.finalScore
         }));
-        const wsGrd = window.XLSX.utils.json_to_sheet(grdRows.length ? grdRows : [{ Keterangan: "Belum ada data nilai" }]);
-        window.XLSX.utils.book_append_sheet(wb, wsGrd, "Daftar_Nilai");
+        window.XLSX.utils.book_append_sheet(
+          wb,
+          window.XLSX.utils.json_to_sheet(grdRows.length ? grdRows : [{ Keterangan: "Belum ada data" }]),
+          "Daftar_Nilai"
+        );
 
         window.XLSX.writeFile(wb, `ABSENSIKU_${appState.settings.schoolName.replace(/\s+/g, "_")}_${todayISO()}.xlsx`);
-        showToast("File Excel berhasil diunduh.", "success");
+        showToast("File Excel diunduh.", "success");
       };
 
-      // Filter siswa untuk cetak kartu QR
       const printableStudents = useMemo(() => {
         if (printClassId === "ALL") return appState.students;
         return appState.students.filter((s) => s.classId === printClassId);
@@ -1045,46 +894,6 @@
         const d = todayISO();
         return appState.attendance.filter((r) => normalizeRowDate(r.date) === d && r.status === "Hadir").length;
       }, [appState.attendance]);
-
-      if (!isLoggedIn) {
-        return (
-          <div className="min-h-screen flex items-center justify-center bg-[#090d16] p-4">
-            <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/90 p-7 shadow-2xl">
-              <div className="mb-6">
-                <span className="inline-block rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-300 border border-indigo-500/30">
-                  {appState.settings.schoolName} • {appState.settings.subject}
-                </span>
-                <h1 className="mt-3 text-2xl font-bold tracking-tight text-white">ABSENSIKU</h1>
-                <p className="mt-1 text-sm text-slate-400">
-                  Portal Guru & Admin — Absensi QR, Data Siswa, Materi & Rekap Nilai.
-                </p>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Kode Akses Guru
-                  </label>
-                  <input
-                    type="password"
-                    value={loginPasscode}
-                    onChange={(e) => setLoginPasscode(e.target.value)}
-                    placeholder="Masukkan kode akses guru..."
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                  />
-                  {loginError && <p className="mt-1.5 text-xs text-rose-400">{loginError}</p>}
-                </div>
-                <button
-                  type="submit"
-                  className="w-full rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition"
-                >
-                  Masuk ke Dashboard Guru
-                </button>
-              </form>
-            </div>
-          </div>
-        );
-      }
 
       const navItems = [
         { id: "dashboard", label: "Dashboard" },
@@ -1101,7 +910,6 @@
 
       return (
         <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col">
-          {/* Top Bar */}
           <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-[#0d1322]/95 backdrop-blur no-print">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
@@ -1141,18 +949,9 @@
                     Tarik Sheets
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-medium text-slate-300 hover:bg-slate-800"
-                >
-                  Keluar
-                </button>
               </div>
             </div>
 
-            {/* Navigasi Menu */}
             <nav className="border-t border-slate-800/60 bg-slate-950/60">
               <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2">
                 {navItems.map((item) => (
@@ -1176,7 +975,6 @@
             </nav>
           </header>
 
-          {/* Toast Notifikasi */}
           {toast && (
             <div className="fixed bottom-4 right-4 z-50 no-print">
               <div
@@ -1195,7 +993,6 @@
             </div>
           )}
 
-          {/* Konten Utama */}
           <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
             {activeTab === "dashboard" && (
               <div className="space-y-6">
@@ -1234,14 +1031,13 @@
                     </div>
                     <AttendanceBarChart
                       classes={appState.classes}
-                      students={appState.students}
                       attendance={appState.attendance}
                       selectedDate={todayISO()}
                     />
                   </div>
 
                   <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                    <h2 className="mb-3 text-base font-semibold text-white">Aktivitas Absensi Terbaru</h2>
+                    <h2 className="mb-3 text-base font-semibold text-white">Absensi Terbaru</h2>
                     {appState.attendance.length === 0 ? (
                       <p className="text-xs text-slate-400">Belum ada catatan absensi.</p>
                     ) : (
@@ -1272,7 +1068,7 @@
             {activeTab === "scanner" && (
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 <div className="lg:col-span-5 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                  <h2 className="text-base font-semibold text-white">Pengaturan Sesi & Pemindai QR</h2>
+                  <h2 className="text-base font-semibold text-white">Pemindai QR & Absensi</h2>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
@@ -1301,26 +1097,24 @@
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setCameraActive((prev) => !prev)}
-                      className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
-                        cameraActive
-                          ? "bg-rose-600 text-white hover:bg-rose-500"
-                          : "bg-indigo-600 text-white hover:bg-indigo-500"
-                      }`}
-                    >
-                      {cameraActive ? "Matikan Kamera QR" : "Aktifkan Kamera QR"}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCameraActive((prev) => !prev)}
+                    className={`w-full rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
+                      cameraActive
+                        ? "bg-rose-600 text-white hover:bg-rose-500"
+                        : "bg-indigo-600 text-white hover:bg-indigo-500"
+                    }`}
+                  >
+                    {cameraActive ? "Matikan Kamera QR" : "Aktifkan Kamera QR"}
+                  </button>
 
                   <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
                     {cameraActive ? (
                       <div id="absensiku-qr-reader" className="w-full min-h-[240px]" />
                     ) : (
                       <div className="flex h-44 items-center justify-center p-4 text-center text-xs text-slate-400">
-                        Kamera nonaktif. Klik "Aktifkan Kamera QR" atau gunakan input NIS / Absensi Manual di bawah.
+                        Kamera nonaktif. Klik "Aktifkan Kamera QR" atau gunakan input NIS / Absensi Manual.
                       </div>
                     )}
                   </div>
@@ -1340,16 +1134,11 @@
                     </div>
                   )}
 
-                  {/* Input Cepat NIS / Kode */}
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!manualCodeInput.trim()) return;
-                      registerAttendance({
-                        code: manualCodeInput.trim(),
-                        status: "Hadir",
-                        method: "NIS_INPUT"
-                      });
+                      registerAttendance({ code: manualCodeInput.trim(), status: "Hadir", method: "NIS_INPUT" });
                       setManualCodeInput("");
                     }}
                     className="space-y-2 pt-2 border-t border-slate-800"
@@ -1372,20 +1161,15 @@
                     </div>
                   </form>
 
-                  {/* Kotak Absensi Manual */}
                   <form
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!manualStudentId) return;
-                      registerAttendance({
-                        studentId: manualStudentId,
-                        status: manualStatus,
-                        method: "MANUAL"
-                      });
+                      registerAttendance({ studentId: manualStudentId, status: manualStatus, method: "MANUAL" });
                     }}
                     className="space-y-2.5 pt-2 border-t border-slate-800"
                   >
-                    <label className="block text-xs font-semibold text-slate-300">Absensi Manual Siswa</label>
+                    <label className="block text-xs font-semibold text-slate-300">Absensi Manual</label>
                     <select
                       value={manualStudentId}
                       onChange={(e) => setManualStudentId(e.target.value)}
@@ -1420,9 +1204,7 @@
                 </div>
 
                 <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                  <h2 className="mb-4 text-base font-semibold text-white">
-                    Daftar Absensi Tanggal {scanDate}
-                  </h2>
+                  <h2 className="mb-4 text-base font-semibold text-white">Daftar Absensi Tanggal {scanDate}</h2>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -1455,11 +1237,6 @@
                           ))}
                       </tbody>
                     </table>
-                    {appState.attendance.filter((r) => normalizeRowDate(r.date) === scanDate).length === 0 && (
-                      <p className="py-6 text-center text-xs text-slate-400">
-                        Belum ada absensi tercatat pada tanggal ini.
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1471,9 +1248,7 @@
                   onSubmit={handleSaveClass}
                   className="lg:col-span-4 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 h-fit"
                 >
-                  <h2 className="text-base font-semibold text-white">
-                    {classForm.id ? "Edit Kelas" : "Tambah Kelas"}
-                  </h2>
+                  <h2 className="text-base font-semibold text-white">{classForm.id ? "Edit Kelas" : "Tambah Kelas"}</h2>
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">Nama Kelas</label>
                     <input
@@ -1498,7 +1273,7 @@
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Wali Kelas (Opsional)</label>
+                    <label className="block text-xs text-slate-400 mb-1">Wali Kelas</label>
                     <input
                       type="text"
                       value={classForm.homeroomTeacher}
@@ -1506,23 +1281,12 @@
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
                     />
                   </div>
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="submit"
-                      className="flex-1 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
-                    >
-                      Simpan Kelas
-                    </button>
-                    {classForm.id && (
-                      <button
-                        type="button"
-                        onClick={() => setClassForm({ id: "", name: "", gradeLevel: "8", homeroomTeacher: "" })}
-                        className="rounded-xl bg-slate-800 px-3 py-2 text-xs text-slate-300"
-                      >
-                        Batal
-                      </button>
-                    )}
-                  </div>
+                  <button
+                    type="submit"
+                    className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
+                  >
+                    Simpan Kelas
+                  </button>
                 </form>
 
                 <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
@@ -1537,9 +1301,7 @@
                         >
                           <div>
                             <p className="font-semibold text-white">{c.name}</p>
-                            <p className="text-xs text-slate-400">
-                              Tingkat {c.gradeLevel} • {count} Siswa
-                            </p>
+                            <p className="text-xs text-slate-400">Tingkat {c.gradeLevel} • {count} Siswa</p>
                           </div>
                           <div className="flex gap-1.5">
                             <button
@@ -1561,9 +1323,6 @@
                       );
                     })}
                   </div>
-                  {appState.classes.length === 0 && (
-                    <p className="text-xs text-slate-400">Belum ada kelas. Tambahkan kelas di panel kiri.</p>
-                  )}
                 </div>
               </div>
             )}
@@ -1574,21 +1333,18 @@
                   onSubmit={handleSaveStudent}
                   className="lg:col-span-4 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 h-fit"
                 >
-                  <h2 className="text-base font-semibold text-white">
-                    {studentForm.id ? "Edit Data Siswa" : "Tambah Siswa"}
-                  </h2>
+                  <h2 className="text-base font-semibold text-white">{studentForm.id ? "Edit Siswa" : "Tambah Siswa"}</h2>
                   <div>
                     <label className="block text-xs text-slate-400 mb-1">NIS</label>
                     <input
                       type="text"
                       value={studentForm.nis}
                       onChange={(e) => setStudentForm({ ...studentForm, nis: e.target.value })}
-                      placeholder="Contoh: 2026001"
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-400 mb-1">Nama Lengkap</label>
+                    <label className="block text-xs text-slate-400 mb-1">Nama Siswa</label>
                     <input
                       type="text"
                       required
@@ -1605,8 +1361,8 @@
                         onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}
                         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
                       >
-                        <option value="L">Laki-laki (L)</option>
-                        <option value="P">Perempuan (P)</option>
+                        <option value="L">L</option>
+                        <option value="P">P</option>
                       </select>
                     </div>
                     <div>
@@ -1633,20 +1389,18 @@
                   </button>
 
                   <div className="pt-3 border-t border-slate-800">
-                    <label className="block text-xs text-slate-400 mb-1.5">
-                      Impor Massal (Excel / CSV: Kolom Nama, NIS, JK, Kelas)
-                    </label>
+                    <label className="block text-xs text-slate-400 mb-1.5">Impor Excel / CSV</label>
                     <input
                       type="file"
                       accept=".xlsx,.xls,.csv"
                       onChange={handleImportExcelStudents}
-                      className="w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-indigo-300 hover:file:bg-slate-700"
+                      className="w-full text-xs text-slate-300 file:mr-2 file:rounded-lg file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-indigo-300"
                     />
                   </div>
                 </form>
 
                 <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="mb-4 flex items-center justify-between gap-2">
                     <h2 className="text-base font-semibold text-white">Daftar Siswa ({filteredStudents.length})</h2>
                     <select
                       value={selectedClassFilter}
@@ -1661,7 +1415,6 @@
                       ))}
                     </select>
                   </div>
-
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead>
@@ -1669,7 +1422,6 @@
                           <th className="py-2 pr-3">NIS</th>
                           <th className="py-2 pr-3">Nama</th>
                           <th className="py-2 pr-3">Kelas</th>
-                          <th className="py-2 pr-3">JK</th>
                           <th className="py-2 text-right">Aksi</th>
                         </tr>
                       </thead>
@@ -1679,7 +1431,6 @@
                             <td className="py-2.5 pr-3 font-mono text-slate-300">{s.nis || "-"}</td>
                             <td className="py-2.5 pr-3 font-medium text-white">{s.name}</td>
                             <td className="py-2.5 pr-3 text-slate-300">{s.className || "-"}</td>
-                            <td className="py-2.5 pr-3 text-slate-400">{s.gender}</td>
                             <td className="py-2.5 text-right space-x-1.5">
                               <button
                                 type="button"
@@ -1708,57 +1459,44 @@
             {activeTab === "qrcards" && (
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 no-print">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400">Filter Kelas:</span>
-                    <select
-                      value={printClassId}
-                      onChange={(e) => setPrintClassId(e.target.value)}
-                      className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white"
-                    >
-                      <option value="ALL">Semua Kelas</option>
-                      {appState.classes.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
+                  <select
+                    value={printClassId}
+                    onChange={(e) => setPrintClassId(e.target.value)}
+                    className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-white"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {appState.classes.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     type="button"
                     onClick={() => window.print()}
                     className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
                   >
-                    Cetak Kartu QR (Ukuran ID Card)
+                    Cetak Kartu QR
                   </button>
                 </div>
 
                 <div id="print-area" className="flex flex-wrap gap-4">
-                  {printableStudents.map((s) => {
-                    const qrPayload = JSON.stringify({ studentId: s.id, nis: s.nis || s.id });
-                    return (
-                      <div
-                        key={s.id}
-                        className="id-card-print flex items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-slate-900 shadow"
-                      >
-                        <div className="pr-2 overflow-hidden">
-                          <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-700">
-                            {appState.settings.schoolName}
-                          </p>
-                          <p className="mt-1 text-sm font-bold leading-tight text-slate-900 line-clamp-2">
-                            {s.name}
-                          </p>
-                          <p className="mt-1 text-[11px] font-medium text-slate-600">
-                            NIS: {s.nis || "-"}
-                          </p>
-                          <p className="text-[11px] font-semibold text-slate-700">
-                            Kelas: {s.className || "-"}
-                          </p>
-                        </div>
-                        <QRCodeCanvas value={qrPayload} size={86} />
+                  {printableStudents.map((s) => (
+                    <div
+                      key={s.id}
+                      className="id-card-print flex items-center justify-between rounded-xl border border-slate-300 bg-white p-3 text-slate-900 shadow"
+                    >
+                      <div className="pr-2 overflow-hidden">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-700">
+                          {appState.settings.schoolName}
+                        </p>
+                        <p className="mt-1 text-sm font-bold leading-tight text-slate-900 line-clamp-2">{s.name}</p>
+                        <p className="mt-1 text-[11px] font-medium text-slate-600">NIS: {s.nis || "-"}</p>
+                        <p className="text-[11px] font-semibold text-slate-700">Kelas: {s.className || "-"}</p>
                       </div>
-                    );
-                  })}
+                      <QRCodeCanvas value={JSON.stringify({ studentId: s.id, nis: s.nis || s.id })} size={86} />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1770,51 +1508,33 @@
                   className="lg:col-span-4 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 h-fit"
                 >
                   <h2 className="text-base font-semibold text-white">Tambah Pertemuan</h2>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Judul Pertemuan</label>
-                    <input
-                      type="text"
-                      required
-                      value={meetingForm.title}
-                      onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
-                      placeholder="Contoh: Pertemuan 1 - Berpikir Komputasional"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={meetingForm.title}
+                    onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
+                    placeholder="Judul Pertemuan"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                  />
                   <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Tanggal</label>
-                      <input
-                        type="date"
-                        value={meetingForm.date}
-                        onChange={(e) => setMeetingForm({ ...meetingForm, date: e.target.value })}
-                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Kelas</label>
-                      <select
-                        value={meetingForm.classId}
-                        onChange={(e) => setMeetingForm({ ...meetingForm, classId: e.target.value })}
-                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                      >
-                        <option value="">Semua Kelas</option>
-                        {appState.classes.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Topik / Catatan</label>
-                    <textarea
-                      rows="2"
-                      value={meetingForm.topic}
-                      onChange={(e) => setMeetingForm({ ...meetingForm, topic: e.target.value })}
+                    <input
+                      type="date"
+                      value={meetingForm.date}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, date: e.target.value })}
                       className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
                     />
+                    <select
+                      value={meetingForm.classId}
+                      onChange={(e) => setMeetingForm({ ...meetingForm, classId: e.target.value })}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                    >
+                      <option value="">Semua Kelas</option>
+                      {appState.classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <button
                     type="submit"
@@ -1833,9 +1553,7 @@
                     >
                       <div>
                         <p className="font-semibold text-white">{m.title}</p>
-                        <p className="text-slate-400">
-                          {normalizeRowDate(m.date)} • {m.className} {m.topic ? `• ${m.topic}` : ""}
-                        </p>
+                        <p className="text-slate-400">{normalizeRowDate(m.date)} • {m.className}</p>
                       </div>
                       <button
                         type="button"
@@ -1856,62 +1574,29 @@
                   onSubmit={handleSaveMaterial}
                   className="lg:col-span-4 space-y-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 h-fit"
                 >
-                  <h2 className="text-base font-semibold text-white">Tambah Materi Pelajaran</h2>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Judul Materi</label>
-                    <input
-                      type="text"
-                      required
-                      value={materialForm.title}
-                      onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
-                      placeholder="Contoh: Algoritma & Pemrograman Scratch"
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Tingkat</label>
-                      <select
-                        value={materialForm.classLevel}
-                        onChange={(e) => setMaterialForm({ ...materialForm, classLevel: e.target.value })}
-                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                      >
-                        <option value="7">Kelas 7</option>
-                        <option value="8">Kelas 8</option>
-                        <option value="9">Kelas 9</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Semester</label>
-                      <select
-                        value={materialForm.semester}
-                        onChange={(e) => setMaterialForm({ ...materialForm, semester: e.target.value })}
-                        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                      >
-                        <option value="Ganjil">Ganjil</option>
-                        <option value="Genap">Genap</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Ringkasan Materi</label>
-                    <textarea
-                      rows="3"
-                      value={materialForm.summary}
-                      onChange={(e) => setMaterialForm({ ...materialForm, summary: e.target.value })}
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Tautan Referensi / Modul (Opsional)</label>
-                    <input
-                      type="url"
-                      value={materialForm.linkUrl}
-                      onChange={(e) => setMaterialForm({ ...materialForm, linkUrl: e.target.value })}
-                      placeholder="https://..."
-                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
-                    />
-                  </div>
+                  <h2 className="text-base font-semibold text-white">Tambah Materi</h2>
+                  <input
+                    type="text"
+                    required
+                    value={materialForm.title}
+                    onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })}
+                    placeholder="Judul Materi"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                  />
+                  <textarea
+                    rows="3"
+                    value={materialForm.summary}
+                    onChange={(e) => setMaterialForm({ ...materialForm, summary: e.target.value })}
+                    placeholder="Ringkasan materi..."
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                  />
+                  <input
+                    type="url"
+                    value={materialForm.linkUrl}
+                    onChange={(e) => setMaterialForm({ ...materialForm, linkUrl: e.target.value })}
+                    placeholder="URL Modul / Referensi"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white"
+                  />
                   <button
                     type="submit"
                     className="w-full rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
@@ -1921,19 +1606,14 @@
                 </form>
 
                 <div className="lg:col-span-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-3">
-                  <h2 className="text-base font-semibold text-white">Daftar Materi Informatika</h2>
+                  <h2 className="text-base font-semibold text-white">Daftar Materi</h2>
                   {appState.materials.map((mat) => (
                     <div
                       key={mat.id}
                       className="rounded-xl border border-slate-800 bg-slate-950/80 p-4 text-xs space-y-1.5"
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-white text-sm">{mat.title}</p>
-                          <p className="text-slate-400">
-                            Kelas {mat.classLevel} • Semester {mat.semester}
-                          </p>
-                        </div>
+                        <p className="font-semibold text-white text-sm">{mat.title}</p>
                         <button
                           type="button"
                           onClick={() => handleDeleteMaterial(mat.id)}
@@ -1944,13 +1624,8 @@
                       </div>
                       {mat.summary && <p className="text-slate-300">{mat.summary}</p>}
                       {mat.linkUrl && (
-                        <a
-                          href={mat.linkUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-block text-indigo-400 underline"
-                        >
-                          Buka Tautan Materi
+                        <a href={mat.linkUrl} target="_blank" rel="noreferrer" className="text-indigo-400 underline">
+                          Buka Materi
                         </a>
                       )}
                     </div>
@@ -1962,16 +1637,7 @@
             {activeTab === "grades" && (
               <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-base font-semibold text-white">
-                      Pengolahan Nilai — Semester {appState.settings.semester}
-                    </h2>
-                    <p className="text-xs text-slate-400">
-                      Bobot: Harian {appState.settings.weightDaily}% • UTS {appState.settings.weightUts}% • UAS{" "}
-                      {appState.settings.weightUas}%
-                    </p>
-                  </div>
-
+                  <h2 className="text-base font-semibold text-white">Daftar Nilai — Semester {appState.settings.semester}</h2>
                   <div className="flex items-center gap-2">
                     <select
                       value={gradeClassId}
@@ -1985,13 +1651,12 @@
                         </option>
                       ))}
                     </select>
-
                     <button
                       type="button"
                       onClick={handleSaveAllGrades}
                       className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500"
                     >
-                      Simpan Semua Nilai
+                      Simpan Nilai
                     </button>
                   </div>
                 </div>
@@ -2001,11 +1666,11 @@
                     <thead>
                       <tr className="border-b border-slate-800 text-slate-400">
                         <th className="py-2 pr-3">NIS</th>
-                        <th className="py-2 pr-3">Nama Siswa</th>
+                        <th className="py-2 pr-3">Nama</th>
                         <th className="py-2 pr-3">Kelas</th>
-                        <th className="py-2 pr-2 w-24">Harian</th>
-                        <th className="py-2 pr-2 w-24">UTS</th>
-                        <th className="py-2 pr-2 w-24">UAS</th>
+                        <th className="py-2 pr-2">Harian</th>
+                        <th className="py-2 pr-2">UTS</th>
+                        <th className="py-2 pr-2">UAS</th>
                         <th className="py-2 text-right">Nilai Akhir</th>
                       </tr>
                     </thead>
@@ -2068,12 +1733,7 @@
             {activeTab === "reports" && (
               <div className="space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 no-print">
-                  <div>
-                    <h2 className="text-base font-semibold text-white">Rekapitulasi & Cetak Laporan</h2>
-                    <p className="text-xs text-slate-400">
-                      Unduh rekap Excel atau cetak halaman laporan (PDF) untuk arsip sekolah.
-                    </p>
-                  </div>
+                  <h2 className="text-base font-semibold text-white">Rekapitulasi & Cetak</h2>
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -2087,82 +1747,46 @@
                       onClick={() => window.print()}
                       className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500"
                     >
-                      Cetak / Simpan PDF
+                      Cetak / PDF
                     </button>
                   </div>
                 </div>
 
                 <div id="print-area" className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 space-y-6">
-                  <div className="border-b border-slate-800 pb-4">
+                  <div>
                     <h3 className="text-lg font-bold text-white">
-                      LAPORAN KEHADIRAN & NILAI — {appState.settings.schoolName}
+                      LAPORAN ABSENSI & NILAI — {appState.settings.schoolName}
                     </h3>
                     <p className="text-xs text-slate-400">
-                      Mata Pelajaran: {appState.settings.subject} • Guru: {appState.settings.teacherName} • Semester{" "}
-                      {appState.settings.semester} ({appState.settings.academicYear})
+                      {appState.settings.subject} • Semester {appState.settings.semester} ({appState.settings.academicYear})
                     </p>
                   </div>
 
-                  <div>
-                    <h4 className="mb-2 text-sm font-semibold text-white">Riwayat Absensi</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400">
-                            <th className="py-2 pr-3">Tanggal</th>
-                            <th className="py-2 pr-3">NIS</th>
-                            <th className="py-2 pr-3">Nama</th>
-                            <th className="py-2 pr-3">Kelas</th>
-                            <th className="py-2 pr-3">Pertemuan</th>
-                            <th className="py-2">Status</th>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400">
+                          <th className="py-2 pr-3">Tanggal</th>
+                          <th className="py-2 pr-3">NIS</th>
+                          <th className="py-2 pr-3">Nama</th>
+                          <th className="py-2 pr-3">Kelas</th>
+                          <th className="py-2 pr-3">Pertemuan</th>
+                          <th className="py-2">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/70">
+                        {appState.attendance.map((r) => (
+                          <tr key={r.id}>
+                            <td className="py-2 pr-3 text-slate-300">{normalizeRowDate(r.date)}</td>
+                            <td className="py-2 pr-3 font-mono text-slate-300">{r.nis || "-"}</td>
+                            <td className="py-2 pr-3 font-medium text-white">{r.studentName}</td>
+                            <td className="py-2 pr-3 text-slate-300">{r.className || "-"}</td>
+                            <td className="py-2 pr-3 text-slate-300">{r.meetingTitle}</td>
+                            <td className="py-2 text-emerald-300">{r.status}</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/70">
-                          {appState.attendance.map((r) => (
-                            <tr key={r.id}>
-                              <td className="py-2 pr-3 text-slate-300">{normalizeRowDate(r.date)}</td>
-                              <td className="py-2 pr-3 font-mono text-slate-300">{r.nis || "-"}</td>
-                              <td className="py-2 pr-3 font-medium text-white">{r.studentName}</td>
-                              <td className="py-2 pr-3 text-slate-300">{r.className || "-"}</td>
-                              <td className="py-2 pr-3 text-slate-300">{r.meetingTitle}</td>
-                              <td className="py-2 text-emerald-300">{r.status}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="mb-2 text-sm font-semibold text-white">Daftar Nilai</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-slate-400">
-                            <th className="py-2 pr-3">NIS</th>
-                            <th className="py-2 pr-3">Nama</th>
-                            <th className="py-2 pr-3">Kelas</th>
-                            <th className="py-2 pr-3">Harian</th>
-                            <th className="py-2 pr-3">UTS</th>
-                            <th className="py-2 pr-3">UAS</th>
-                            <th className="py-2 text-right">Nilai Akhir</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/70">
-                          {appState.grades.map((g) => (
-                            <tr key={g.id}>
-                              <td className="py-2 pr-3 font-mono text-slate-300">{g.nis || "-"}</td>
-                              <td className="py-2 pr-3 font-medium text-white">{g.studentName}</td>
-                              <td className="py-2 pr-3 text-slate-300">{g.className || "-"}</td>
-                              <td className="py-2 pr-3 text-slate-300">{g.dailyScore}</td>
-                              <td className="py-2 pr-3 text-slate-300">{g.utsScore}</td>
-                              <td className="py-2 pr-3 text-slate-300">{g.uasScore}</td>
-                              <td className="py-2 text-right font-bold text-indigo-300">{g.finalScore}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -2175,7 +1799,6 @@
                   className="lg:col-span-7 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5"
                 >
                   <h2 className="text-base font-semibold text-white">Pengaturan Sekolah & Bobot Nilai</h2>
-
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs text-slate-400 mb-1">Nama Sekolah</label>
@@ -2217,7 +1840,7 @@
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="grid grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs text-slate-400 mb-1">Bobot Harian (%)</label>
                       <input
@@ -2257,9 +1880,6 @@
 
                 <div className="lg:col-span-5 space-y-4 rounded-2xl border border-rose-900/50 bg-slate-900/70 p-5 h-fit">
                   <h2 className="text-base font-semibold text-rose-300">Manajemen Data</h2>
-                  <p className="text-xs text-slate-400">
-                    Gunakan tombol ini untuk mengosongkan seluruh data siswa, kelas, pertemuan, materi, absensi, dan nilai.
-                  </p>
                   <button
                     type="button"
                     onClick={handleClearAllData}
